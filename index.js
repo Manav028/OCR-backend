@@ -7,7 +7,7 @@ import cors from 'cors'
 dotenv.config();
 connecttomongodb();
 
-const app = express()
+var app = express()
 app.use(cors())
 
 app.use(express.json());
