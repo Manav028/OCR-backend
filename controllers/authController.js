@@ -17,6 +17,12 @@ export const signUp = async (req, res) => {
   try {
     const { username, email, password } = signUpSchema.parse(req.body);
 
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        error: { email: 'Email is already registered'},
+      });
+    }
     const user = new User({ username, email, password });
     await user.save();
     const token = jwt.sign({ userId: user._id }, process.env.JWT_PASS);
@@ -29,7 +35,7 @@ export const signUp = async (req, res) => {
       }, {});
       return res.status(400).json({ error: formattedErrors });
     }
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
