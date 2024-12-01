@@ -7,9 +7,9 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   isVerified : { type : Boolean , default : false},
-  verificationToken : { type : String},
-  date:{type:Date,default:Date.now()}
-});
+  verificationCode : { type : String},
+  verificationCodeExpiryAt : {type : Date}
+},{timestamps:true});
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();

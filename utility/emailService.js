@@ -8,11 +8,8 @@ const mailtransporter = nodemailer.createTransport({
     }
 });
 
-const sendVerificationLink = async (email,token) => {
+const sendVerificationLink = async (email,code) => {
 
-  console.log(process.env.FRONTEND_URL)
-
-    const verificationlink = `${process.env.FRONTEND_URL}/api/auth/verify-email?veritoken=${token}`
     const mailOptions = {
         from: '"YourApp" <yourapp@example.com>',
         to: email,
@@ -20,7 +17,7 @@ const sendVerificationLink = async (email,token) => {
         html: `
           <h1>Verify Your Email</h1>
           <p>Click the link below to verify your email address:</p>
-          <a href="${verificationlink}">Verify Email</a>
+          <h1>${code}</h1>
         `,
       };
 

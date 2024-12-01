@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { sendVerificationLink } from '../utility/emailService.js';
 import crypto from 'crypto';
+import { error } from 'console';
 
 const signUpSchema = z.object({
   username: z.string().min(3, { message: 'Username must be at least 3 characters long' }),
@@ -19,22 +20,24 @@ export const signUp = async (req, res) => {
   try {
     const { username, email, password } = signUpSchema.parse(req.body);
 
-    // const existingUser = await User.findOne({ email });
-    // if (existingUser) {
-    //   return res.status(400).json({
-    //     error: { email: 'Email is already registered'},
-    //   });
-    // }
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        error: { email: 'Email is already registered'},
+      });
+    }
 
-    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationCodeExpiryAt = new Date(Date.now() + 10 * 60 * 1000)
 
-    const user = new User({ username, email, password,verificationToken });
+    const user = new User({ username, email, password,verificationCode,verificationCodeExpiryAt});
     await user.save();
 
-    await sendVerificationLink(email,verificationToken)
+    await sendVerificationLink(email,verificationCode)
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_PASS);
-    res.status(201).json({ message: 'User registered successfully. Please verify your email.', token });
+    res.status(201).json({ message: 'User registered successfully. Please verify your email.', token ,});
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       const formattedErrors = error.errors.reduce((acc, curr) => {
@@ -73,50 +76,33 @@ export const signIn = async (req, res) => {
   }
 };
 
-export const verifyEmail = async (req,res) => {
-  const {veritoken} = req.query;
-  
-  try{
-    const user = await User.findOne({ verificationToken: veritoken });
+export const verifyOTP  = async(req,res) => {
+  const {email , otp} = req.body 
 
-    if (!user) {
-      return res.status(400).json({ error: 'Invalid or expired verification token' });
+  try{
+    const user = await User.findOne({email});
+
+    if(!user){
+      return res.status(404).json({error : 'User not found'})
+    }
+
+    if(user.isVerified){
+      return res.status(400).json({error : 'User is already Verified'});
+    }
+
+    if (user.verificationCode !== otp || user.verificationCodeExpiryAt < new Date()) {
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
     }
 
     user.isVerified = true;
-    user.verificationToken = undefined; 
+    user.otp = undefined;
+    user.otpExpiresAt = undefined;
     await user.save();
 
     res.status(200).json({ message: 'Email verified successfully!' });
+
   }catch(error){
     res.status(500).json({ error: 'An error occurred. Please try again later.' });
-
   }
 
 }
-
-export const resendVerificationEmail = async (req, res) => {
-  const { email } = req.body;
-
-  try {
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    if (user.isVerified) {
-      return res.status(400).json({ error: 'Email is already verified' });
-    }
-
-    const newToken = crypto.randomBytes(32).toString('hex');
-    user.verificationToken = newToken;
-    await user.save();
-
-    await sendVerificationEmail(email, newToken);
-
-    res.status(200).json({ message: 'Verification email sent successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'An error occurred. Please try again later.' });
-  }
-};
