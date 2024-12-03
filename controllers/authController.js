@@ -21,11 +21,13 @@ export const signUp = async (req, res) => {
     const { username, email, password } = signUpSchema.parse(req.body);
 
     const existingUser = await User.findOne({ email });
+
     if (existingUser) {
       return res.status(400).json({
         error: { email: 'Email is already registered'},
       });
     }
+    
 
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     const verificationCodeExpiryAt = new Date(Date.now() + 10 * 60 * 1000)
@@ -56,14 +58,28 @@ export const signIn = async (req, res) => {
     const { email, password } = signInSchema.parse(req.body);
 
     const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        error: { email: 'User not found' },
+      });
+    }
+
     if (!user || !(await user.comparePassword(password))) {
       return res.status(400).json({
         error: { email: 'Invalid email or password', password: 'Invalid email or password' },
       });
     }
 
+    if (!user.isVerified) {
+      return res.status(401).json({
+        error: {email : 'Email is not verified'},
+      });
+    }
+
     const token = jwt.sign({ userId: user._id }, process.env.JWT_PASS);
     res.json({ token });
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       const formattedErrors = error.errors.reduce((acc, curr) => {
@@ -77,7 +93,11 @@ export const signIn = async (req, res) => {
 };
 
 export const verifyOTP  = async(req,res) => {
-  const {email , otp} = req.body 
+  
+  const { email, otp } = req.body;
+
+  console.log(email)
+  console.log(otp)
 
   try{
     const user = await User.findOne({email});
@@ -90,13 +110,18 @@ export const verifyOTP  = async(req,res) => {
       return res.status(400).json({error : 'User is already Verified'});
     }
 
+    console.log(user.verificationCode !== otp)
+    console.log(user.verificationCodeExpiryAt)
+    console.log(new Date())
+    console.log(user.verificationCodeExpiryAt < new Date())
+
     if (user.verificationCode !== otp || user.verificationCodeExpiryAt < new Date()) {
       return res.status(400).json({ error: 'Invalid or expired OTP' });
     }
 
     user.isVerified = true;
-    user.otp = undefined;
-    user.otpExpiresAt = undefined;
+    user.verificationCode = undefined;
+    user.verificationCodeExpiryAt = undefined;
     await user.save();
 
     res.status(200).json({ message: 'Email verified successfully!' });
@@ -105,4 +130,36 @@ export const verifyOTP  = async(req,res) => {
     res.status(500).json({ error: 'An error occurred. Please try again later.' });
   }
 
+}
+
+export const resendOTP = async (req,res) => {
+
+  const email = req.body.email;
+
+  try{
+    const user = await User.findOne({email})
+
+    if(!user){
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ error: 'Email is already verified' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    user.verificationCode = otp;
+    user.verificationCodeExpiryAt = otpExpiresAt;
+    await user.save();
+
+    await sendVerificationLink(email,otp);
+
+    res.status(200).json({ message: 'New OTP sent successfully' });
+
+  }
+  catch (error) {
+    res.status(500).json({ error: 'An error occurred. Please try again later.' });
+  }
 }
