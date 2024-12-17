@@ -1,14 +1,14 @@
-import nodemailer from 'nodemailer'
+const nodemailer = require('nodemailer');
 
 const mailtransporter = nodemailer.createTransport({
-    service : 'Gmail',
+    service: 'Gmail',
     auth: {
-        user : "manavpatel.uk@gmail.com",
-        pass : "rlyu kcln rkkw dpgd",
+        user: "manavpatel.uk@gmail.com",
+        pass: "rlyu kcln rkkw dpgd",
     }
 });
 
-const sendVerificationLink = async (email,code) => {
+const sendVerificationLink = async (email, code) => {
 
     const mailOptions = {
         from: '"YourApp" <yourapp@example.com>',
@@ -19,15 +19,15 @@ const sendVerificationLink = async (email,code) => {
           <p>Click the link below to verify your email address:</p>
           <h1>${code}</h1>
         `,
-      };
+    };
 
-      try {
+    try {
         const info = await mailtransporter.sendMail(mailOptions);
-        // console.log('Email sent: ', info.response);
-      } catch (error) {
-        // console.error('Error sending email: ', error.message);
-        throw new Error('Email sending failed');
-      }
-}
 
-export {sendVerificationLink};
+    } catch (error) {
+
+        throw new Error('Email sending failed');
+    }
+};
+
+module.exports = { sendVerificationLink };

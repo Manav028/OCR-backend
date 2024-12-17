@@ -1,10 +1,9 @@
-import express from 'express'
-import {translateText} from '../config/googletranslationconfig'
-import manav from '../translate-google-json.json'
+const express = require('express');
+const axios = require('axios');
 
 const translaterouter = express.Router();
 
-router.post('/', async (req, res) => {
+translaterouter.post('/', async (req, res) => {
     const { text, targetLanguage } = req.body;
 
     if (!text || !targetLanguage) {
@@ -12,12 +11,28 @@ router.post('/', async (req, res) => {
     }
 
     try {
-        const translation = await translateText(text, targetLanguage);
-        res.status(200).json({ original: text, translated: translation });
+        const response = await axios.post(
+            `https://translation.googleapis.com/language/translate/v2`,
+            null,
+            {
+                params: {
+                    key: process.env.GOOGLE_APPLICATION_KEY,
+                    q: text,
+                    target: targetLanguage,
+                },
+            }
+        );
+
+        const translatedText = response.data.data.translations[0].translatedText;
+
+        res.status(200).json({
+            original: text,
+            translated: translatedText,
+        });
     } catch (error) {
         console.error('Translation error:', error.message);
         res.status(500).json({ error: 'Failed to translate text' });
     }
 });
 
-export default translaterouter;
+module.exports = translaterouter;

@@ -1,11 +1,11 @@
-import express from 'express'
-import { signUp, signIn , verifyOTP,resendOTP} from '../controllers/authController.js';
+const express = require('express');
+const { signUp, signIn, verifyOTP, resendOTP } = require('../controllers/authController');
 
 const authRoutes = express.Router();
 
 authRoutes.post('/signup', signUp);
 authRoutes.post('/signin', signIn);
-authRoutes.post('/verifyOTP',verifyOTP);
-authRoutes.post('/resendOTP',resendOTP);
+authRoutes.post('/verifyOTP', verifyOTP);
+authRoutes.post('/resendOTP', resendOTP);
 
-export default authRoutes
+module.exports = authRoutes;
